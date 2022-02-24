@@ -1,81 +1,76 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { addIcon, App, Modal, Plugin, PluginSettingTab, Setting, FileSystemAdapter, Notice, normalizePath } from 'obsidian';
+import SqlJsWasm from 'node_modules/sql.js/dist/sql-wasm.wasm'
+import SqlJs from 'sql.js'
+import * as fs from 'fs'
 
+
+const HIGHLIGHTS_QUERY = `SELECT T2.ContentID as ID, BookTitle, Title as ChapterTitle, Text as Highlight, T2.DateCreated, T2.DateModified, VolumeIndex, StartContainerPath, EndContainerPath, SubChapters
+--SELECT * 
+FROM (SELECT *, group_concat(Title, '-') as SubChapters FROM content GROUP BY ChapterIDBookmarked ORDER BY VolumeIndex) as T1 INNER JOIN Bookmark as T2 ON T1.ChapterIDBookmarked = T2.ContentID
+GROUP BY T2.BookmarkID 
+ORDER BY ChapterIDBookmarked, ChapterProgress`
+const EREADER_ICON_PATH = `<path stroke="currentColor" fill="currentColor" d="M 68.15625 55.882812 C 67.609375 54.335938 66.207031 53.367188 64.566406 53.367188 L 62.085938 53.367188 L 62.085938 8.894531 C 62.085938 4.367188 58.457031 0.773438 53.886719 0.773438 L 9.761719 0.773438 C 4.910156 0.773438 0.78125 4.859375 0.78125 9.667969 L 0.78125 80.4375 C 0.78125 85.039062 5.058594 88.945312 9.664062 88.945312 L 54.261719 88.945312 C 54.734375 88.945312 55.148438 89.324219 55.113281 89.792969 C 55.074219 90.28125 54.664062 90.492188 54.179688 90.492188 L 36.410156 90.492188 L 49.980469 98.226562 L 81.21875 98.226562 Z M 32.039062 85.15625 C 30.789062 85.15625 29.851562 84.226562 29.851562 82.992188 C 29.851562 81.8125 30.851562 80.824219 32.039062 80.824219 C 33.289062 80.824219 34.226562 81.753906 34.226562 82.988281 C 34.1875 84.226562 33.289062 85.15625 32.039062 85.15625 Z M 56.230469 53.367188 L 48.554688 53.367188 C 46.484375 53.367188 44.730469 55.183594 44.730469 57.234375 C 44.730469 59.285156 46.484375 61.101562 48.554688 61.101562 L 56.289062 61.101562 L 56.289062 77.34375 L 7.027344 77.34375 L 7.027344 11.988281 L 56.230469 11.988281 Z M 45.257812 15.898438 L 45.257812 43.113281 C 43.390625 43.113281 41.882812 44.605469 41.882812 46.453125 C 41.882812 48.300781 43.390625 49.796875 45.257812 49.796875 L 45.257812 51.09375 L 21.042969 51.09375 L 21.042969 51.078125 C 18.550781 50.980469 16.542969 48.949219 16.542969 46.453125 C 16.542969 46.242188 16.601562 20.539062 16.601562 20.539062 C 16.601562 17.988281 18.707031 15.902344 21.285156 15.902344 L 45.257812 15.902344 Z M 42.066406 43.082031 L 20.957031 43.125 C 19.21875 43.253906 17.839844 44.691406 17.839844 46.4375 C 17.839844 48.285156 19.363281 49.792969 21.226562 49.78125 L 42.027344 49.78125 C 41.144531 48.933594 40.574219 47.75 40.574219 46.4375 C 40.574219 45.113281 41.15625 43.929688 42.066406 43.082031 Z M 42.066406 43.082031 "/>`
 // Remember to rename these classes and interfaces!
 
-interface MyPluginSettings {
-	mySetting: string;
+interface KoboHighlightsImporterSettings {
+	storageFolder: string;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+const DEFAULT_SETTINGS: KoboHighlightsImporterSettings = {
+	storageFolder: ''
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class KoboHighlightsImporter extends Plugin {
+	settings: KoboHighlightsImporterSettings;
+	SQL: any;
+
+	getAbsolutePath(fileName: string): string {
+		let basePath;
+		let relativePath;
+		// base path
+		if (this.app.vault.adapter instanceof FileSystemAdapter) {
+			basePath = this.app.vault.adapter.getBasePath();
+		} else {
+			throw new Error('Cannot determine base path.');
+		}
+		// relative path
+		relativePath = `${this.app.vault.configDir}/plugins/${this.manifest.id}/${fileName}`;
+		// absolute path
+		return `${basePath}/${relativePath}`;
+	}
 
 	async onload() {
+
+		this.SQL = await SqlJs({
+			wasmBinary: SqlJsWasm
+		})
+
+
+		addIcon('e-reader', EREADER_ICON_PATH)
 		await this.loadSettings();
 
+
 		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
+		const KoboHighlightsImporterIconEl = this.addRibbonIcon('e-reader', 'Import from Kobo', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
+			new LocateFileModal(this.app, this.SQL).open();
+
 		});
 		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
+		KoboHighlightsImporterIconEl.addClass('kobo-highlights-importer-icon');
 
 		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
+			id: 'import-from-kobo-sqlite',
+			name: 'Import',
 			callback: () => {
-				new SampleModal(this.app).open();
+				new LocateFileModal(this.app, this.SQL).open();
 			}
 		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
-		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+		this.addSettingTab(new KoboHighlightsImporterSettingsTab(this.app, this));
 	}
 
 	onunload() {
@@ -91,47 +86,154 @@ export default class MyPlugin extends Plugin {
 	}
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
+class LocateFileModal extends Modal {
+	SQL: any;
+	DB: any;
+
+	goButtonEl: HTMLButtonElement
+	inputFileEl: HTMLInputElement
+
+
+	constructor(app: App, SQL: any) {
 		super(app);
+		this.SQL = SQL
+	}
+
+	fetchHighlights() {
+		try{
+			const results = this.DB.exec(HIGHLIGHTS_QUERY)
+
+			// console.log(results)
+
+			const rows = results[0].values
+
+			const transformedRows = rows.reduce( (old,e) => {
+				if(old[e[1]]){
+					if(old[e[1]][e[2]]){
+						
+						old[e[1]][e[2]].push(e[3])
+					} else {
+						
+						old[e[1]][e[2]] = [e[3]]
+					}
+				}
+				else {
+
+					old[e[1]] = {
+						[e[2]]: [e[3]]
+					}
+				}
+				return old
+			}, {})
+
+
+			if (this.app.vault.adapter instanceof FileSystemAdapter) {
+
+				for(const book in transformedRows){
+					const fileName = normalizePath(`./${book}.md`)
+					this.app.vault.adapter.write(fileName, `# ${book}\n\n`)
+					for(const chapter in transformedRows[book]){
+						this.app.vault.adapter.append(fileName, `## ${chapter}\n\n`)
+						this.app.vault.adapter.append(fileName, transformedRows[book][chapter].join('\n\n'))
+						this.app.vault.adapter.append(fileName, `\n\n`)
+					}
+				}
+
+			} else {
+				throw new Error('Cannot create new files');
+			}
+			
+		} catch (e){
+			console.log(e)
+			new Notice(`Something went wrong... ${e.message}`)
+
+		}
+	}
+
+	loadDB(dbFilePath: string) {
+		try {
+
+			const fileBuffer = fs.readFileSync(dbFilePath)
+
+			this.DB = new this.SQL.Database(fileBuffer)
+
+			this.goButtonEl.disabled = false
+			this.goButtonEl.setAttr('style', 'background-color: green; color: black')
+
+		} catch (e) {
+			console.log(e)
+			this.goButtonEl.setAttr('style', 'background-color: red; color: white')
+			new Notice('Something went wrong... Is this file correct?')
+		}
 	}
 
 	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
+		const { contentEl } = this;
+
+
+		this.goButtonEl = contentEl.createEl('button');
+		this.goButtonEl.textContent = 'Extract'
+		this.goButtonEl.disabled = true;
+		this.goButtonEl.setAttr('style', 'background-color: red; color: white')
+		this.goButtonEl.addEventListener('click', ev => this.fetchHighlights())
+
+
+		this.inputFileEl = contentEl.createEl('input');
+		this.inputFileEl.type = 'file'
+		this.inputFileEl.accept = '.sqlite'
+		this.inputFileEl.addEventListener('change', ev => this.loadDB((<any>ev).target.files[0].path))
+
+		const heading = contentEl.createEl('h2')
+		heading.textContent = 'Sqlite file location'
+
+		const description = contentEl.createEl('p')
+		description.innerHTML = 'Please select your <em>KoboReader.sqlite</em> file from a connected device'
+
+
+
+		contentEl.appendChild(heading)
+		contentEl.appendChild(description)
+		contentEl.appendChild(this.inputFileEl)
+		contentEl.appendChild(this.goButtonEl)
 	}
 
+
+
 	onClose() {
-		const {contentEl} = this;
+		const { contentEl } = this;
 		contentEl.empty();
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+class KoboHighlightsImporterSettingsTab extends PluginSettingTab {
+	plugin: KoboHighlightsImporter;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: KoboHighlightsImporter) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
 	display(): void {
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', {text: 'Settings for my awesome plugin.'});
+		containerEl.createEl('h2', { text: this.plugin.manifest.name });
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
+			.setName('Destination folder')
+			.setDesc('Where to save imported highlights')
 			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
+				.setPlaceholder('relative/path/to/folder')
+				.setValue(this.plugin.settings.storageFolder)
 				.onChange(async (value) => {
-					console.log('Secret: ' + value);
-					this.plugin.settings.mySetting = value;
+					this.plugin.settings.storageFolder = value;
 					await this.plugin.saveSettings();
 				}));
 	}
+}
+
+
+function transformDBResults(rows){
+
 }

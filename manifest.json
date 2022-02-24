@@ -1,10 +1,10 @@
 {
-	"id": "obsidian-sample-plugin",
-	"name": "Sample Plugin",
+	"id": "obsidian-kobo-highlights-importer-plugin",
+	"name": "Kobo Highlights Importer",
 	"version": "1.0.1",
 	"minAppVersion": "0.12.0",
-	"description": "This is a sample plugin for Obsidian. This plugin demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"isDesktopOnly": false
+	"description": "Import highlights from your Kobo device",
+	"author": "Flavio Cordari",
+	"authorUrl": "",
+	"isDesktopOnly": true
 }
