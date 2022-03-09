@@ -4,7 +4,7 @@ import SqlJs from 'sql.js'
 import * as fs from 'fs'
 
 declare module 'obsidian' {
-	interface FileSystemAdapter{
+	interface FileSystemAdapter {
 		append: (path: string, data: string) => void
 	}
 }
@@ -28,14 +28,9 @@ const DEFAULT_SETTINGS: KoboHighlightsImporterSettings = {
 
 export default class KoboHighlightsImporter extends Plugin {
 	settings: KoboHighlightsImporterSettings;
-	SQL: any;
+
 
 	async onload() {
-
-		this.SQL = await SqlJs({
-			wasmBinary: SqlJsWasm
-		})
-
 
 		addIcon('e-reader', EREADER_ICON_PATH)
 		await this.loadSettings();
@@ -44,7 +39,7 @@ export default class KoboHighlightsImporter extends Plugin {
 		// This creates an icon in the left ribbon.
 		const KoboHighlightsImporterIconEl = this.addRibbonIcon('e-reader', 'Import from Kobo', (evt: MouseEvent) => {
 			// Called when the user clicks the icon.
-			new ExtractHighlightsModal(this.app, this.SQL, this.settings.storageFolder).open();
+			new ExtractHighlightsModal(this.app, this.settings.storageFolder).open();
 
 		});
 		// Perform additional things with the ribbon
@@ -55,7 +50,7 @@ export default class KoboHighlightsImporter extends Plugin {
 			id: 'import-from-kobo-sqlite',
 			name: 'Import from Kobo',
 			callback: () => {
-				new ExtractHighlightsModal(this.app, this.SQL, this.settings.storageFolder).open();
+				new ExtractHighlightsModal(this.app, this.settings.storageFolder).open();
 			}
 		});
 
@@ -78,71 +73,56 @@ export default class KoboHighlightsImporter extends Plugin {
 }
 
 class ExtractHighlightsModal extends Modal {
-	SQL: any;
-	DB: any;
+
 
 	goButtonEl: HTMLButtonElement
 	inputFileEl: HTMLInputElement
 
 	storageFolder: string
+	sqlFilePath: string
 
-	hasher: any
 
-
-	constructor(app: App, SQL: any, storageFolder: string) {
+	constructor(app: App, storageFolder: string) {
 		super(app);
-		this.SQL = SQL
 		this.storageFolder = storageFolder
 	}
 
-	fetchHighlights() {
-		try {
-			const results = this.DB.exec(HIGHLIGHTS_QUERY)
-
-			const transformedRows = transformResults(results[0].values)
-
-			if (this.app.vault.adapter instanceof FileSystemAdapter) {
+	async fetchHighlights() {
 
 
-				for (const book in transformedRows) {
-					const fileName = normalizePath(`${this.storageFolder}/${book}.md`)
-					this.app.vault.adapter.write( fileName, `# ${book}\n\n`)
-					for (const chapter in transformedRows[book]) {
-						this.app.vault.adapter.append(fileName, `## ${chapter}\n\n`)
-						this.app.vault.adapter.append(fileName, transformedRows[book][chapter].join('\n\n'))
-						this.app.vault.adapter.append(fileName, `\n\n`)
-					}
+		if (!this.sqlFilePath) {
+			throw new Error('No sqlite DB file selected...')
+		}
+
+		const SQLEngine = await SqlJs({
+			wasmBinary: SqlJsWasm
+		})
+
+		const fileBuffer = fs.readFileSync(this.sqlFilePath)
+
+		const DB = new SQLEngine.Database(fileBuffer)
+
+		const results = DB.exec(HIGHLIGHTS_QUERY)
+
+		const transformedRows = transformResults(results[0].values)
+
+		if (this.app.vault.adapter) {
+
+			for (const book in transformedRows) {
+				let content = `# ${book}\n\n`;
+				for (const chapter in transformedRows[book]) {
+					content += `## ${chapter}\n\n`
+					content += transformedRows[book][chapter].join('\n\n')
+					content += `\n\n`
 				}
-
-			} else {
-				throw new Error('Cannot create new files');
+				const fileName = normalizePath(`${this.storageFolder}/${book}.md`)
+				this.app.vault.adapter.write(fileName, content)
 			}
 
-			new Notice('Highlights extracted!')
-
-			this.close()
-
-		} catch (e) {
-			console.log(e)
-			new Notice(`Something went wrong... ${e.message}`)
+		} else {
+			throw new Error('Cannot create new files: adapter not found');
 		}
-	}
 
-	loadDB(dbFilePath: string) {
-		try {
-
-			const fileBuffer = fs.readFileSync(dbFilePath)
-
-			this.DB = new this.SQL.Database(fileBuffer)
-
-			this.goButtonEl.disabled = false
-			this.goButtonEl.setAttr('style', 'background-color: green; color: black')
-
-		} catch (e) {
-			console.log(e)
-			this.goButtonEl.setAttr('style', 'background-color: red; color: white')
-			new Notice('Something went wrong... Is this file correct?')
-		}
 	}
 
 	onOpen() {
@@ -153,13 +133,36 @@ class ExtractHighlightsModal extends Modal {
 		this.goButtonEl.textContent = 'Extract'
 		this.goButtonEl.disabled = true;
 		this.goButtonEl.setAttr('style', 'background-color: red; color: white')
-		this.goButtonEl.addEventListener('click', ev => this.fetchHighlights())
+		this.goButtonEl.addEventListener('click', ev => {
+			new Notice('Extracting highlights...')
+			this.fetchHighlights()
+				.then(() => {
+					new Notice('Highlights extracted!')
+					this.close()
+				}).catch(e => {
+					console.log(e)
+					new Notice('Something went wrong... Check console for more details.')
+				})
+		}
+		)
 
 
 		this.inputFileEl = contentEl.createEl('input');
 		this.inputFileEl.type = 'file'
 		this.inputFileEl.accept = '.sqlite'
-		this.inputFileEl.addEventListener('change', ev => this.loadDB((<any>ev).target.files[0].path))
+		this.inputFileEl.addEventListener('change', ev => {
+			const filePath = (<any>ev).target.files[0].path;
+			fs.access(filePath, fs.constants.R_OK, (err) => {
+				if (err) {
+					new Notice('Selected file is not readable')
+				} else {
+					this.sqlFilePath = filePath
+					this.goButtonEl.disabled = false
+					this.goButtonEl.setAttr('style', 'background-color: green; color: black')
+					new Notice('Ready to extract!')
+				}
+			})
+		})
 
 		const heading = contentEl.createEl('h2')
 		heading.textContent = 'Sqlite file location'
@@ -237,7 +240,6 @@ function transformResults(dbRows: any) {
 	return dbRows.reduce((old: any, e: any) => {
 		if (old[e[1]]) {
 			if (old[e[1]][e[2]]) {
-
 				old[e[1]][e[2]].push(e[3])
 			} else {
 
@@ -245,7 +247,6 @@ function transformResults(dbRows: any) {
 			}
 		}
 		else {
-
 			old[e[1]] = {
 				[e[2]]: [e[3]]
 			}
