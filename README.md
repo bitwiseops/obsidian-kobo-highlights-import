@@ -24,5 +24,6 @@ Please feel free to test, send feedbacks using Issues and open Pull Requests to 
 
 ## To Do
 
+- Add notes import feature
 - Auto detect .sqlite file
 - Use templates to generate imported highlights notes
