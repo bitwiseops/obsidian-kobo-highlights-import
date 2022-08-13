@@ -165,12 +165,19 @@ class ExtractHighlightsModal extends Modal {
 
 function transformResults(dbRows: any, includeCreatedDate: boolean, dateFormat: string) {
 	return dbRows.reduce((old: any, e: any) => {
-		let entry = e[3]
+		let entry = e[3];
+
+		if (entry == null) {
+			return old;
+		}
+
+		// Remove continous whitespace
+		entry = entry.replace(/\s+/g,' ').trim();
 		
 		if (includeCreatedDate) {
-			const createdDate = new Date(e[4])
-			const formattedDate = "[[" + (moment(createdDate)).format(dateFormat) + "]]"
-			entry = entry + " - " + formattedDate
+			const createdDate = new Date(e[4]);
+			const formattedDate = "[[" + (moment(createdDate)).format(dateFormat) + "]]";
+			entry = entry + " - " + formattedDate;
 		}
 
 		if (old[e[1]]) {
