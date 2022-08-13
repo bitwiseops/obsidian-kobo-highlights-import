@@ -1,10 +1,10 @@
 {
 	"id": "obsidian-kobo-highlights-importer-plugin",
 	"name": "Kobo Highlights Importer",
-	"version": "1.0.1",
-	"minAppVersion": "0.12.0",
+	"version": "1.0.2",
+	"minAppVersion": "0.15.9",
 	"description": "Import highlights from your Kobo device",
-	"author": "Flavio Cordari",
-	"authorUrl": "https://github.com/bitwiseops",
+	"author": "Kevin Hellemun",
+	"authorUrl": "https://github.com/OGKevin",
 	"isDesktopOnly": true
 }

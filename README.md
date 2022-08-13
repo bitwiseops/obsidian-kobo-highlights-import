@@ -1,5 +1,3 @@
-# _I'm sorry to say that I can't provide further support for this plugin at the moment. Please feel free to fork and continue development on your own. Hope to get back soon_
-
 # Obsidian Kobo Highlight Importer
 
 This plugin aims to make highlight import from Kobo devices easier.
