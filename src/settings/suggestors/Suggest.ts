@@ -10,9 +10,9 @@ const wrapAround = (value: number, size: number): number => {
 
 class Suggest<T> {
     private owner: ISuggestOwner<T>;
-    private values: T[];
-    private suggestions: HTMLDivElement[];
-    private selectedItem: number;
+    private values: T[] = [];
+    private suggestions: HTMLDivElement[] = [];
+    private selectedItem: number | undefined;
     private containerEl: HTMLElement;
 
     constructor(
@@ -26,23 +26,23 @@ class Suggest<T> {
         containerEl.on(
             "click",
             ".suggestion-item",
-            this.onSuggestionClick.bind(this)
+            () => { this.onSuggestionClick.bind(this) }
         );
         containerEl.on(
             "mousemove",
             ".suggestion-item",
-            this.onSuggestionMouseover.bind(this)
+            () => { this.onSuggestionMouseover.bind(this) }
         );
 
         scope.register([], "ArrowUp", (event) => {
-            if (!event.isComposing) {
+            if (!event.isComposing && this.selectedItem != undefined) {
                 this.setSelectedItem(this.selectedItem - 1, true);
                 return false;
             }
         });
 
         scope.register([], "ArrowDown", (event) => {
-            if (!event.isComposing) {
+            if (!event.isComposing && this.selectedItem != undefined) {
                 this.setSelectedItem(this.selectedItem + 1, true);
                 return false;
             }
@@ -85,6 +85,10 @@ class Suggest<T> {
     }
 
     useSelectedItem(event: MouseEvent | KeyboardEvent) {
+        if (this.selectedItem == undefined) {
+            return
+        }
+
         const currentValue = this.values[this.selectedItem];
         if (currentValue) {
             this.owner.selectSuggestion(currentValue, event);
@@ -96,10 +100,13 @@ class Suggest<T> {
             selectedIndex,
             this.suggestions.length
         );
-        const prevSelectedSuggestion = this.suggestions[this.selectedItem];
+
+        if (this.selectedItem != undefined) {
+            this.suggestions[this.selectedItem]?.removeClass("is-selected");
+        }
+
         const selectedSuggestion = this.suggestions[normalizedIndex];
 
-        prevSelectedSuggestion?.removeClass("is-selected");
         selectedSuggestion?.addClass("is-selected");
 
         this.selectedItem = normalizedIndex;
@@ -114,7 +121,7 @@ export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
     protected app: App;
     protected inputEl: HTMLInputElement | HTMLTextAreaElement;
 
-    private popper: PopperInstance;
+    private popper: PopperInstance | undefined;
     private scope: Scope;
     private suggestEl: HTMLElement;
     private suggest: Suggest<T>;

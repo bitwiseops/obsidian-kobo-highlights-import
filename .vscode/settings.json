@@ -1,0 +1,9 @@
+{
+    "mocha.files.glob": "src/**/*.test.ts",
+    "mocha.requires": [
+        "ts-node/register"
+    ],
+    "mocha.options": {
+        "timeout": "10000"
+    }
+}
