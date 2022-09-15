@@ -2,6 +2,14 @@
 
 This plugin aims to make highlight import from Kobo devices easier.
 
+- [Obsidian Kobo Highlight Importer](#obsidian-kobo-highlight-importer)
+  - [How to use](#how-to-use)
+  - [Templating](#templating)
+    - [Examples](#examples)
+    - [Variables](#variables)
+  - [Helping Screenshots](#helping-screenshots)
+  - [Contributing](#contributing)
+
 ## How to use
 
 Once installed, the steps to import your highlights directly into the vault are:
@@ -11,6 +19,30 @@ Once installed, the steps to import your highlights directly into the vault are:
 3. Open the import window using the plugin button
 4. Locate _KoboReader.sqlite_ in the _.kobo_ folder ( this folder is hidden, so if you don't see it you should enable hidden files view from system configs )
 5. Extract
+
+## Templating
+
+The default template is:
+
+```markdown
+{{highlights}}
+```
+
+### Examples
+
+```markdown
+---
+tags:
+- books
+---
+
+{{highlights}}
+```
+### Variables
+
+| Tag        | Description                                      | Example          |
+|------------|--------------------------------------------------|------------------|
+| highlights | Will get replaced with the extracted highlights. | `{{highlights}}` |
 
 ## Helping Screenshots
 ![](./README_assets/step1.png)

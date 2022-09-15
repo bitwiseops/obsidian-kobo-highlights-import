@@ -41,4 +41,3 @@ export default class KoboHighlightsImporter extends Plugin {
 		await this.saveData(this.settings);
 	}
 }
-
