@@ -56,10 +56,6 @@ Kobo Highlight Importer uses Obsidian callouts for the highlights and annotation
 ![](./README_assets/Callout_Settings.png)
 ![](./README_assets/Callouts.png)
 
-const desc = document.createDocumentFragment();
-    desc.append("When enabled Kobo highlights importer will make use of Obsidian callouts for highlights and annotations.",
-    desc.createEl("br"),
-
 Check the [documentation](https://help.obsidian.md/How+to/Use+callouts") to get a list of all available callouts that obsidian offers.
 
 ## Contributing
