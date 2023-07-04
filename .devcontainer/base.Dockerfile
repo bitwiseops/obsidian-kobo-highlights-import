@@ -1,5 +1,5 @@
 # [Choice] Node.js version (use -bullseye variants on local arm64/Apple Silicon): 18-bullseye, 16-bullseye, 14-bullseye, 18-buster, 16-buster, 14-buster
-ARG VARIANT=18-bullseye@sha256:8cdf7234449f35e579f7491137807ddb3a089f028862f7ab69af437cc9f47ff1
+ARG VARIANT=18-bullseye@sha256:bbd1d6d755db903ce5861b6cb84e81b519f2b21feb0b408e1087ce03faa8d0b2
 FROM node:${VARIANT}
 
 # [Option] Install zsh
