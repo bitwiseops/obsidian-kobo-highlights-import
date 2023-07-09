@@ -2,8 +2,7 @@ name: Build plugin
 
 on:
   release:
-    types:
-      - "published" 
+    types: [published]
 
 env:
   PLUGIN_NAME: kobo-highlights-import
