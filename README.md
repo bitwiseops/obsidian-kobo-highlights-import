@@ -1,33 +1,41 @@
-# _I'm sorry to say that I can't provide further support for this plugin at the moment. Please feel free to fork and continue development on your own. Hope to get back soon_
+# Obsidian Kobo Highlights Importer
 
-In the meantime, you could have look to this active [fork](https://github.com/OGKevin/obsidian-kobo-highlights-import) 
+Import the highlights from your **Kobo e-reader** straight into your Obsidian vault.
 
-# Obsidian Kobo Highlight Importer
+> **Maintenance status:** I'm not actively maintaining this plugin any more. Feel free to fork it. A more actively developed fork is [OGKevin/obsidian-kobo-highlights-import](https://github.com/OGKevin/obsidian-kobo-highlights-import).
 
-This plugin aims to make highlight import from Kobo devices easier.
+It reads the `KoboReader.sqlite` database stored on the device and writes your highlights as notes. Tested with a Kobo Libra 2 and a small number of books. Desktop only.
 
-_At the time of writing, it has only been tested with a Kobo Libra 2 with few book highlights._
+## Install
 
-## How to use
+Download `main.js` and `manifest.json` from the [latest release](https://github.com/bitwiseops/obsidian-kobo-highlights-import/releases/latest) into `<your vault>/.obsidian/plugins/obsidian-kobo-highlights-importer-plugin/`, then enable the plugin in *Settings → Community plugins*.
 
-Once installed, the steps to import your highlights directly into the vault are:
+To build from source:
 
-1. Connect your Kobo device to PC using a proper USB cable
-2. Check if it has mounted automatically, or mount it manually (e.g. open the root folder of your Kobo using a file manager)
-3. Open the import window using the plugin button
-4. Locate _KoboReader.sqlite_ in the _.kobo_ folder ( this folder is hidden, so if you don't see it you should enable hidden files view from system configs )
-5. Extract
+```bash
+npm install
+npm run build
+```
 
-## Helping Screenshots
+## Usage
 
-<img src="README_assets/step1.png" alt="step1" height="200"/><img src="README_assets/step2.png" alt="step1" width="200"/><img src="README_assets/step3.png" alt="step1" width="200"/><img src="README_assets/step4.png" alt="step1" width="200"/>
+1. Connect the Kobo to your computer with a USB cable and make sure it is mounted.
+2. Open the import window with the plugin's ribbon button.
+3. Select `KoboReader.sqlite` from the device's hidden `.kobo` folder (enable hidden files in your file manager if you can't see it).
+4. Extract.
 
-## Contributing
+<img src="README_assets/step1.png" alt="Step 1" height="200"/><img src="README_assets/step2.png" alt="Step 2" width="200"/><img src="README_assets/step3.png" alt="Step 3" width="200"/><img src="README_assets/step4.png" alt="Step 4" width="200"/>
 
-Please feel free to test, send feedbacks using Issues and open Pull Requests to improve the process. 
+## Roadmap (not planned)
 
-## To Do
+- Import notes as well as highlights
+- Auto-detect the `.sqlite` file
+- Generate notes from templates
 
-- Add notes import feature
-- Auto detect .sqlite file
-- Use templates to generate imported highlights notes
+## Stack
+
+TypeScript · Obsidian Plugin API · esbuild · SQLite (in the browser)
+
+## License
+
+MIT, see [LICENSE](LICENSE).
